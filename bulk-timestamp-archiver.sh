@@ -20,6 +20,13 @@ process_file() {
 
   echo "Processing: '$filename'"
 
+  # Check if filename already matches the expected pattern: YYYY_MM_DD-HH_MM_SS-*
+  if [[ "$filename" =~ ^[0-9]{4}_[0-9]{2}_[0-9]{2}-[0-9]{2}_[0-9]{2}_[0-9]{2}- ]]; then
+    echo "  ⚠ No change needed"
+    echo ""
+    return 0
+  fi
+
   # ──────────────────────────────────────── Replace Spaces With Underscores ─────────────────────────────────────────
   newname="${newname// /_}"
   echo "  After space replacement: '$newname'"
