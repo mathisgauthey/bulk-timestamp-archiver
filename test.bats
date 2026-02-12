@@ -149,3 +149,65 @@ create_test_file() {
   [ "$status" -eq 0 ]
   [[ "$output" =~ "No files to process" ]]
 }
+
+@test "file already processed" {
+  # Create a file that already matches the expected format
+  local timestamp="202301011200"
+  create_test_file "testfile.txt" "$timestamp"
+
+  # First rename it
+  "$SCRIPT" "$TEST_DIR/testfile.txt"
+
+  # Get the new filename
+  local newfile=$(find "$TEST_DIR" -name "*testfile.txt" -print -quit)
+
+  # Try to rename it again - should show "No change needed"
+  run "$SCRIPT" "$newfile"
+  [ "$status" -eq 0 ]
+  [[ "$output" =~ "No change needed" ]]
+}
+
+@test "preserves file extension" {
+  create_test_file "document.pdf"
+
+  run "$SCRIPT" "$TEST_DIR/document.pdf"
+  [ "$status" -eq 0 ]
+
+  local count=$(find "$TEST_DIR" -name "*.pdf" | wc -l)
+  [ "$count" -eq 1 ]
+}
+
+@test "handles files with multiple dots in name" {
+  create_test_file "my.file.name.tar.gz"
+
+  run "$SCRIPT" "$TEST_DIR/my.file.name.tar.gz"
+  [ "$status" -eq 0 ]
+
+  local count=$(find "$TEST_DIR" -name "*my.file.name.tar.gz" | wc -l)
+  [ "$count" -eq 1 ]
+}
+
+@test "cancellation on confirmation prompt" {
+  create_test_file "file1.txt"
+  create_test_file "file2.txt"
+  create_test_file "file3.txt"
+
+  # Process directory with 'n' to cancel
+  run bash -c "echo 'n' | $SCRIPT $TEST_DIR"
+  [ "$status" -eq 0 ]
+  [[ "$output" =~ "Cancelled" ]]
+
+  # Original files should still exist
+  [ -f "$TEST_DIR/file1.txt" ]
+  [ -f "$TEST_DIR/file2.txt" ]
+  [ -f "$TEST_DIR/file3.txt" ]
+}
+
+@test "summary shows correct counts" {
+  create_test_file "file1.txt"
+  create_test_file "file2.txt"
+
+  run bash -c "echo 'y' | $SCRIPT $TEST_DIR"
+  [ "$status" -eq 0 ]
+  [[ "$output" =~ "Summary: 2 files renamed, 0 skipped" ]]
+}
