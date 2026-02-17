@@ -12,15 +12,29 @@ A small command line tool that allows to timestamp files for archiving purposes.
 
 ## Installation
 
-### Quick Install
+Either way, the script will be installed to `/usr/local/bin/bta` for easy access from anywhere in the terminal.
+
+### One-Click Install
+
+Using curl:
 
 ```bash
-git clone https://github.com/mg-okteo/bulk-timestamp-archiver.git
-cd bulk-timestamp-archiver
-sudo ./install.sht
+curl -fsSL https://raw.githubusercontent.com/mathisgauthey/bulk-timestamp-archiver/main/install.sh | sudo bash
 ```
 
-This will install the script as `bta` command in `/usr/local/bin/`.
+Or using wget:
+
+```bash
+wget -qO- https://raw.githubusercontent.com/mathisgauthey/bulk-timestamp-archiver/main/install.sh | sudo bash
+```
+
+### Manual Install
+
+```bash
+git clone https://github.com/mathisgauthey/bulk-timestamp-archiver.git
+cd bulk-timestamp-archiver
+sudo ./install.sh
+```
 
 ## Usage
 
