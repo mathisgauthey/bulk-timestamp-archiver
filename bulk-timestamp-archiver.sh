@@ -73,7 +73,7 @@ main() {
     echo ""
     echo "Examples:"
     echo "  $0 myfile.txt                 # Rename a single file"
-    echo "  $0 myfolder                   # Rename all files in folder"
+    echo "  $0 myfolder                   # Rename the folder itself"
     echo "  $0 myfolder/*                 # Rename all files in folder (expanded by shell)"
     exit 1
   fi
@@ -85,9 +85,8 @@ main() {
     if [ -f "$item" ]; then
       files_to_process+=("$item")
     elif [ -d "$item" ]; then
-      while IFS= read -r -d '' file; do
-        files_to_process+=("$file")
-      done < <(find "$item" -maxdepth 1 -type f -print0)
+      # Treat directories as items to rename (not their contents)
+      files_to_process+=("$item")
     else
       echo "Error: '$item' is not a file or directory"
     fi

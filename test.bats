@@ -3,10 +3,16 @@
 SCRIPT="./bulk-timestamp-archiver.sh"
 TEST_DIR=""
 
+# Helper function to create a test file with specific modification time
+create_test_file() {
+  local filename="$1"
+  local modified_time="${2:-202301011200}" # Default: 2023-01-01 12:00
+  touch -t "$modified_time" "$TEST_DIR/$filename"
+}
+
 setup() {
   # Create a temporary test directory
   TEST_DIR=$(mktemp -d)
-  echo "Test directory: $TEST_DIR" >&3
 }
 
 teardown() {
@@ -14,13 +20,6 @@ teardown() {
   if [ -n "$TEST_DIR" ] && [ -d "$TEST_DIR" ]; then
     rm -rf "$TEST_DIR"
   fi
-}
-
-# Helper function to create a test file with specific modification time
-create_test_file() {
-  local filename="$1"
-  local modified_time="${2:-202301011200}" # Default: 2023-01-01 12:00
-  touch -t "$modified_time" "$TEST_DIR/$filename"
 }
 
 @test "script exists and is executable" {
@@ -125,21 +124,34 @@ create_test_file() {
 }
 
 @test "processes directory" {
-  create_test_file "file1.txt"
-  create_test_file "file2.txt"
-  create_test_file "file3.txt"
+  mkdir -p "$TEST_DIR/my_test_folder"
+  create_test_file "file1.txt" "202301011200"
+  create_test_file "file2.txt" "202301011200"
+  create_test_file "file3.txt" "202301011200"
 
-  # Process directory with 'y' confirmation
-  run bash -c "echo 'y' | $SCRIPT $TEST_DIR"
+  # Move files into the folder
+  mv "$TEST_DIR/file1.txt" "$TEST_DIR/my_test_folder/"
+  mv "$TEST_DIR/file2.txt" "$TEST_DIR/my_test_folder/"
+  mv "$TEST_DIR/file3.txt" "$TEST_DIR/my_test_folder/"
+
+  # Process the folder itself (should rename the folder, not files inside)
+  run "$SCRIPT" "$TEST_DIR/my_test_folder"
   [ "$status" -eq 0 ]
-  [[ "$output" =~ "3 files renamed" ]]
+  [[ "$output" =~ "1 files renamed" ]]
+
+  # Original folder should not exist
+  [ ! -d "$TEST_DIR/my_test_folder" ]
+
+  # Renamed folder should exist with timestamp prefix
+  local count=$(find "$TEST_DIR" -type d -name "*my_test_folder" | wc -l)
+  [ "$count" -eq 1 ]
 }
 
 @test "detects files correctly before processing" {
   create_test_file "test1.txt"
   create_test_file "test2.txt"
 
-  run bash -c "echo 'y' | $SCRIPT $TEST_DIR"
+  run "$SCRIPT" "$TEST_DIR/test1.txt" "$TEST_DIR/test2.txt"
   [ "$status" -eq 0 ]
   [[ "$output" =~ "Detected 2 file(s)" ]]
 }
@@ -192,8 +204,8 @@ create_test_file() {
   create_test_file "file2.txt"
   create_test_file "file3.txt"
 
-  # Process directory with 'n' to cancel
-  run bash -c "echo 'n' | $SCRIPT $TEST_DIR"
+  # Process files with 'n' to cancel
+  run bash -c "echo 'n' | $SCRIPT $TEST_DIR/file1.txt $TEST_DIR/file2.txt $TEST_DIR/file3.txt"
   [ "$status" -eq 0 ]
   [[ "$output" =~ "Cancelled" ]]
 
@@ -207,7 +219,24 @@ create_test_file() {
   create_test_file "file1.txt"
   create_test_file "file2.txt"
 
-  run bash -c "echo 'y' | $SCRIPT $TEST_DIR"
+  run "$SCRIPT" "$TEST_DIR/file1.txt" "$TEST_DIR/file2.txt"
   [ "$status" -eq 0 ]
   [[ "$output" =~ "Summary: 2 files renamed, 0 skipped" ]]
+}
+
+@test "renaming a folder should work even if files are inside" {
+  mkdir "$TEST_DIR/my folder"
+  touch "$TEST_DIR/my folder/file1.txt"
+  touch "$TEST_DIR/my folder/file2.txt"
+
+  run "$SCRIPT" "$TEST_DIR/my folder"
+  [ "$status" -eq 0 ]
+  [[ "$output" =~ "1 files renamed" ]]
+
+  # Original folder should not exist
+  [ ! -d "$TEST_DIR/my folder" ]
+
+  # Renamed folder should exist (with timestamp prefix and spaces replaced)
+  local count=$(find "$TEST_DIR" -type d -name "*my_folder" | wc -l)
+  [ "$count" -eq 1 ]
 }
