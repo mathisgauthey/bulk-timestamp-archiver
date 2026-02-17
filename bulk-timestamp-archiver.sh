@@ -9,7 +9,7 @@ remove_accents() {
   echo "$1" | iconv -f utf8 -t ascii//TRANSLIT 2>/dev/null || echo "$1"
 }
 
-# Function to process a single file
+# Function to process a single file or folder
 process_file() {
   local filepath="$1"
   local dirpath
@@ -17,14 +17,19 @@ process_file() {
   local filename
   filename=$(basename "$filepath")
   local newname="$filename"
+  local item_type="file"
 
-  echo "Processing: '$filename'"
+  if [ -d "$filepath" ]; then
+    item_type="folder"
+  fi
+
+  echo "Processing $item_type: '$filename'"
 
   # Check if filename already matches the expected pattern: YYYY_MM_DD-HH_MM_SS-*
   if [[ "$filename" =~ ^[0-9]{4}_[0-9]{2}_[0-9]{2}-[0-9]{2}_[0-9]{2}_[0-9]{2}- ]]; then
     echo "  ⚠ No change needed"
     echo ""
-    return 0
+    return 2
   fi
 
   # ──────────────────────────────────────── Replace Spaces With Underscores ─────────────────────────────────────────
@@ -63,7 +68,7 @@ process_file() {
   else
     echo "  ⚠ No change needed"
     echo ""
-    return 0
+    return 2
   fi
 }
 
@@ -80,35 +85,62 @@ main() {
 
   # First pass: collect all files to process
   local files_to_process=()
+  local file_count=0
+  local folder_count=0
 
   for item in "$@"; do
     if [ -f "$item" ]; then
       files_to_process+=("$item")
+      file_count=$((file_count + 1))
     elif [ -d "$item" ]; then
       # Treat directories as items to rename (not their contents)
       files_to_process+=("$item")
+      folder_count=$((folder_count + 1))
     else
       echo "Error: '$item' is not a file or directory"
     fi
   done
 
+  item_label() {
+    local count="$1"
+    local files="$2"
+    local folders="$3"
+
+    if [ "$files" -gt 0 ] && [ "$folders" -eq 0 ]; then
+      if [ "$count" -eq 1 ]; then
+        echo "file"
+      else
+        echo "files"
+      fi
+    elif [ "$folders" -gt 0 ] && [ "$files" -eq 0 ]; then
+      if [ "$count" -eq 1 ]; then
+        echo "folder"
+      else
+        echo "folders"
+      fi
+    else
+      echo "files and folders"
+    fi
+  }
+
+  local detected_label
+  detected_label=$(item_label "${#files_to_process[@]}" "$file_count" "$folder_count")
+
   # Show detected files
-  echo "========================================="
-  echo "Detected ${#files_to_process[@]} file(s):"
-  echo "========================================="
+  echo "Detected ${#files_to_process[@]} $detected_label:"
   for file in "${files_to_process[@]}"; do
     echo "  - $(basename "$file")"
   done
   echo ""
 
   if [ ${#files_to_process[@]} -eq 0 ]; then
-    echo "No files to process."
+    echo "No files or folders to process."
     exit 0
   fi
 
   # Ask for confirmation if there are many files
   if [ ${#files_to_process[@]} -gt 2 ]; then
-    read -p "Process ${#files_to_process[@]} files? (y/n) " -n 1 -r
+    read -p "Process ${#files_to_process[@]} $detected_label? (y/n) " -n 1 -r
     echo
     if [[ ! $REPLY =~ ^[Yy]$ ]]; then
       echo "Cancelled."
@@ -116,9 +148,7 @@ main() {
     fi
   fi
 
-  echo "========================================="
   echo "Starting the renaming process..."
-  echo "========================================="
 
   local processed=0
   local skipped=0
@@ -131,10 +161,10 @@ main() {
     fi
   done
 
-  echo ""
-  echo "========================================="
-  echo "Summary: $processed files renamed, $skipped skipped"
-  echo "========================================="
+  local summary_label
+  summary_label=$(item_label "$processed" "$file_count" "$folder_count")
+
+  echo "Summary: $processed $summary_label renamed, $skipped skipped"
   return 0
 }
 

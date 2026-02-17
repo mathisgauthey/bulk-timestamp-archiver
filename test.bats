@@ -110,7 +110,7 @@ teardown() {
 
   run "$SCRIPT" "$TEST_DIR/file1.txt"
   [ "$status" -eq 0 ]
-  [[ "$output" =~ "1 files renamed" ]]
+  [[ "$output" =~ "1 file renamed" ]]
 }
 
 @test "processes multiple files without confirmation prompt" {
@@ -137,7 +137,7 @@ teardown() {
   # Process the folder itself (should rename the folder, not files inside)
   run "$SCRIPT" "$TEST_DIR/my_test_folder"
   [ "$status" -eq 0 ]
-  [[ "$output" =~ "1 files renamed" ]]
+  [[ "$output" =~ "1 folder renamed" ]]
 
   # Original folder should not exist
   [ ! -d "$TEST_DIR/my_test_folder" ]
@@ -153,13 +153,13 @@ teardown() {
 
   run "$SCRIPT" "$TEST_DIR/test1.txt" "$TEST_DIR/test2.txt"
   [ "$status" -eq 0 ]
-  [[ "$output" =~ "Detected 2 file(s)" ]]
+  [[ "$output" =~ "Detected 2 files" ]]
 }
 
 @test "handles non-existent file gracefully" {
   run "$SCRIPT" "$TEST_DIR/nonexistent.txt"
   [ "$status" -eq 0 ]
-  [[ "$output" =~ "No files to process" ]]
+  [[ "$output" =~ "No files or folders to process." ]]
 }
 
 @test "file already processed" {
@@ -231,7 +231,7 @@ teardown() {
 
   run "$SCRIPT" "$TEST_DIR/my folder"
   [ "$status" -eq 0 ]
-  [[ "$output" =~ "1 files renamed" ]]
+  [[ "$output" =~ "1 folder renamed" ]]
 
   # Original folder should not exist
   [ ! -d "$TEST_DIR/my folder" ]
